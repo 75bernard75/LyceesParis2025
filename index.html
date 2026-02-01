@@ -2,8 +2,8 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Paris – Lycées → collèges secteur 1 (carte interactive, par l'UL12)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Paris – Lycées → collèges secteur 1 (carte interactive)</title>
 
   <!-- Leaflet via CDN : aucune installation de module -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -12,69 +12,208 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
   <style>
-    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    #app { height: 100%; display: grid; grid-template-columns: 420px 1fr; }
-    #sidebar { border-right: 1px solid #ddd; padding: 12px; overflow: auto; }
-    #map { height: 100%; }
-    h1 { font-size: 16px; margin: 0 0 6px; }
-    .hint { font-size: 12px; color: #555; line-height: 1.35; margin-bottom: 10px; }
-    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .search { display:flex; gap:8px; margin: 10px 0 12px; }
-    input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 10px; }
-    button { padding: 8px 10px; border: 1px solid #ccc; background: #f7f7f7; border-radius: 10px; cursor:pointer; }
-    button:hover { background:#eee; }
-    button:disabled { cursor:not-allowed; opacity:.55; }
-    .card { padding: 10px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px; }
-    .card strong { display:block; }
-    .meta { font-size: 12px; color: #666; margin-top: 4px; }
-    .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #f2f2f2; border: 1px solid #e6e6e6; }
-    .warn { color:#8a2b2b; }
-    .ok { color:#1f6b3a; }
-    ul { margin: 6px 0 0; padding-left: 18px; }
-    li { margin: 2px 0; }
-    label.opt { font-size: 12px; color:#333; display:flex; gap:8px; align-items:center; }
+    :root{
+      --border:#ddd;
+      --muted:#666;
+      --bg:#fff;
+      --chip:#f2f2f2;
+      --card:#fff;
+      --shadow: 0 10px 30px rgba(0,0,0,.12);
+      --radius: 14px;
+      --tap: 44px;
+    }
+
+    html, body { height:100%; margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); }
+    /* Desktop layout */
+    #app { height:100%; display:grid; grid-template-columns: 420px 1fr; }
+    #sidebar { border-right:1px solid var(--border); padding: 12px; overflow:auto; background: var(--bg); }
+    #map { height:100%; width:100%; }
+
+    h1{ font-size:16px; margin:0 0 6px; }
+    .hint{ font-size:12px; color:#555; line-height:1.35; margin-bottom:10px; }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .search{ display:flex; gap:8px; margin: 10px 0 12px; }
+    input[type="text"]{
+      width:100%;
+      padding: 10px 12px;
+      border:1px solid #ccc;
+      border-radius: 12px;
+      font-size: 14px;
+      height: var(--tap);
+      box-sizing: border-box;
+    }
+    button{
+      padding: 10px 12px;
+      border:1px solid #ccc;
+      background:#f7f7f7;
+      border-radius: 12px;
+      cursor:pointer;
+      height: var(--tap);
+      font-size: 14px;
+    }
+    button:hover{ background:#eee; }
+    button:disabled{ cursor:not-allowed; opacity:.55; }
+
+    .card{
+      padding: 12px;
+      border: 1px solid #eee;
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      background: var(--card);
+    }
+    .card strong{ display:block; font-size:14px; }
+    .meta{ font-size:12px; color: var(--muted); margin-top:4px; }
+    .badge{
+      font-size:12px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--chip);
+      border: 1px solid #e6e6e6;
+    }
+    .warn{ color:#8a2b2b; }
+    .ok{ color:#1f6b3a; }
+    ul{ margin: 6px 0 0; padding-left: 18px; }
+    li{ margin: 2px 0; }
+    label.opt{ font-size: 12px; color:#333; display:flex; gap:10px; align-items:center; }
+    label.opt input{ transform: scale(1.1); }
+
+    /* Leaflet popup ergonomics on mobile */
+    .leaflet-popup-content { margin: 10px 12px; }
+    .leaflet-popup-content-wrapper { border-radius: 14px; }
+    .leaflet-container a.leaflet-popup-close-button { width: 34px; height: 34px; font-size: 20px; }
+
+    /* ---------- Mobile: bottom sheet overlay ---------- */
+    @media (max-width: 900px){
+      #app{ grid-template-columns: 1fr; }
+      #sidebar{
+        position: fixed;
+        left: 0; right: 0;
+        bottom: 0;
+        border-right: none;
+        border-top: 1px solid var(--border);
+        border-radius: 18px 18px 0 0;
+        box-shadow: var(--shadow);
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+        max-height: 68vh;
+        overflow: hidden;
+        z-index: 1000;
+      }
+      #sidebar.collapsed{
+        max-height: 64px;
+        overflow: hidden;
+      }
+      .sheet-head{
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 6px 2px 10px;
+      }
+      .grabber{
+        width: 46px;
+        height: 5px;
+        border-radius: 999px;
+        background: #d8d8d8;
+        margin: 0 auto 6px;
+      }
+      .sheet-title{
+        display:flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+        user-select:none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .sheet-title .t{
+        font-weight: 700;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sheet-title .s{
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sheet-actions{
+        display:flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .iconbtn{
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border-radius: 14px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #sidebar .sheet-body{
+        overflow:auto;
+        max-height: calc(68vh - 64px);
+        padding-right: 2px;
+      }
+      #sidebar.collapsed .sheet-body{ display:none; }
+      button{ height: 46px; border-radius: 14px; }
+      input[type="text"]{ height: 46px; border-radius: 14px; }
+      .card{ margin-bottom: 12px; }
+    }
   </style>
 </head>
 
 <body>
 <div id="app">
-  <div id="sidebar">
-    <h1>Paris – Lycées → collèges secteur 1, par l'UL12 <br/><span style="font-size: 75%">[sur une idée originale d'A.T. ;)]</span></h1>
-    <div class="hint">
-      Fichier HTML unique, consultable en local.<br/> 
-	  <span style="color:red">DISCLAIMER : Données récupérées automatiquement via des sources publiques, <strong>non vérifiées manuellement. Si vous constatez une erreur, remontez-la svp à l'UL12</strong></span>.<br/>
-      Positions des lycées : export JSON (dép. 75).<br/>
-      Fond de carte OpenStreetMap : nécessite une connexion (sinon la carte peut rester blanche).
-	  
-																																																					   
+  <div id="sidebar" class="collapsed">
+    <div class="grabber" id="grabber" aria-hidden="true"></div>
+
+    <div class="sheet-head">
+      <div class="sheet-title" role="button" id="toggleSheet" aria-label="Ouvrir/fermer le panneau">
+        <div class="t">Lycées de Paris → collèges (secteur 1)</div>
+        <div class="s">Tape pour rechercher & sélectionner</div>
+      </div>
+      <div class="sheet-actions">
+        <button class="iconbtn" id="btnLocate" title="Recentrer sur Paris" aria-label="Recentrer sur Paris">⌖</button>
+        <button class="iconbtn" id="btnCollapse" title="Réduire/agrandir" aria-label="Réduire/agrandir">▴</button>
+      </div>
     </div>
 
-    <div class="row" style="margin-bottom:10px;">
-      <span class="badge">Lycées affichés: <span id="countShown">0</span></span>
-      <span class="badge">Total: <span id="countTotal">0</span></span>
-    </div>
+    <div class="sheet-body">
+      <div class="hint" style="margin-top:0;">
+        HTML unique, consultable en local. Positions : JSON (dép. 75). Fond OpenStreetMap : connexion requise.
+      </div>
 
-    <div class="row" style="margin-bottom:8px;">
-      <!-- OPTION 1 -->
-      <label class="opt" title="Quand tu cliques sur un lycée (liste/marker), la popup s'ouvre automatiquement.">
-        <input type="checkbox" id="optAutoPopup" checked />
-        Option 1 : ouvrir directement la popup
-      </label>
-    </div>
-    <div class="row" style="margin-bottom:10px;">
-      <!-- OPTION 2 -->
-      <label class="opt" title="Si un lycée n'est pas géolocalisé, on affiche la liste des collèges directement sous son nom dans la liste.">
-        <input type="checkbox" id="optInlineMissing" checked />
-        Option 2 : afficher les collèges sous le nom si non géolocalisé
-      </label>
-    </div>
+      <div class="row" style="margin-bottom:10px;">
+        <span class="badge">Affichés: <span id="countShown">0</span></span>
+        <span class="badge">Total: <span id="countTotal">0</span></span>
+      </div>
 
-    <div class="search">
-      <input id="filter" type="text" placeholder="Filtrer un lycée (ex: CONDORCET)"/>
-      <button id="reset">Reset</button>
-    </div>
+      <div class="row" style="margin-bottom:8px;">
+        <label class="opt" title="Quand tu cliques sur un lycée (liste/marker), la popup s'ouvre automatiquement.">
+          <input type="checkbox" id="optAutoPopup" checked />
+          Option 1 : ouvrir directement la popup
+        </label>
+      </div>
+      <div class="row" style="margin-bottom:10px;">
+        <label class="opt" title="Si un lycée n'est pas géolocalisé, on affiche la liste des collèges directement sous son nom dans la liste.">
+          <input type="checkbox" id="optInlineMissing" checked />
+          Option 2 : afficher les collèges sous le nom si non géolocalisé
+        </label>
+      </div>
 
-    <div id="list"></div>
+      <div class="search">
+        <input id="filter" type="text" placeholder="Rechercher un lycée (ex: CONDORCET)"/>
+        <button id="reset">Reset</button>
+      </div>
+
+      <div id="list"></div>
+    </div>
   </div>
 
   <div id="map"></div>
@@ -110,7 +249,7 @@
       </div>`;
   }
 
-  const markersByLycee = new Map(); // key upper lycee_csv
+  const markersByLycee = new Map();
   const layer = L.geoJSON(GEO, {
     pointToLayer: (feature, latlng) => L.marker(latlng),
     onEachFeature: (feature, leafletLayer) => {
@@ -123,9 +262,8 @@
   try {
     const b = layer.getBounds();
     if (b.isValid()) map.fitBounds(b.pad(0.08));
-  } catch(e) {}
+  } catch(e){}
 
-  // Sidebar rendering
   const listEl = document.getElementById("list");
   const filterEl = document.getElementById("filter");
   const optAutoPopup = document.getElementById("optAutoPopup");
@@ -136,7 +274,15 @@
     const cols = (LYCEE_TO_COLLEGES[lycee] || []);
     if (!cols.length) return "";
     const items = cols.map(c => `<li>${escapeHtml(c)}</li>`).join("");
-    return `<ul style="margin-top:6px; max-height:160px; overflow:auto;">${items}</ul>`;
+    return `<ul style="margin-top:8px; max-height:160px; overflow:auto;">${items}</ul>`;
+  }
+
+  function isMobile() {
+    return window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+  }
+
+  function maybeCollapseAfterPick() {
+    if (isMobile()) setSheetCollapsed(true);
   }
 
   function renderList() {
@@ -168,7 +314,7 @@
           ${hasGeo ? '<span class="ok">géolocalisé</span>' : '<span class="warn">non géolocalisé</span>'}
           • collèges: ${cols.length}
         </div>
-        <div class="row" style="margin-top:8px;">
+        <div class="row" style="margin-top:10px;">
           <button data-action="focus" ${hasGeo ? "" : "disabled"}>Centrer</button>
           <button data-action="open" ${hasGeo ? "" : "disabled"}>Ouvrir</button>
         </div>
@@ -179,26 +325,35 @@
       const btnOpen = div.querySelector('[data-action="open"]');
 
       if (hasGeo) {
-        btnFocus.addEventListener("click", () => {
+        const openLycee = (openPopup) => {
           const ll = m.layer.getLatLng();
           map.setView(ll, 14);
-          if (optAutoPopup.checked) m.layer.openPopup(); // Option 1
-        });
-        btnOpen.addEventListener("click", () => {
+          if (openPopup && optAutoPopup.checked) m.layer.openPopup();
+          maybeCollapseAfterPick();
+        };
+
+        btnFocus.addEventListener("click", () => openLycee(true));
+        btnOpen.addEventListener("click", () => { 
           const ll = m.layer.getLatLng();
           map.setView(ll, 14);
           m.layer.openPopup();
+          maybeCollapseAfterPick();
         });
+
+        const title = div.querySelector("strong");
+        title.style.cursor = "pointer";
+        title.addEventListener("click", () => openLycee(true));
       }
 
       listEl.appendChild(div);
     }
   }
 
-  // Marker click behavior (Option 1)
+  // Marker click behavior (Option 1) + keep map visible on mobile
   for (const v of markersByLycee.values()) {
     v.layer.on("click", () => {
       if (optAutoPopup.checked) v.layer.openPopup();
+      if (isMobile()) setSheetCollapsed(true);
     });
   }
 
@@ -209,7 +364,51 @@
   filterEl.addEventListener("input", renderList);
   optInlineMissing.addEventListener("change", renderList);
 
+  // Bottom sheet controls
+  const sidebar = document.getElementById("sidebar");
+  const btnCollapse = document.getElementById("btnCollapse");
+  const toggleSheet = document.getElementById("toggleSheet");
+  const grabber = document.getElementById("grabber");
+  const btnLocate = document.getElementById("btnLocate");
+
+  function setSheetCollapsed(collapsed) {
+    if (!isMobile()) {
+      sidebar.classList.remove("collapsed");
+      btnCollapse.textContent = "▴";
+      return;
+    }
+    sidebar.classList.toggle("collapsed", collapsed);
+    btnCollapse.textContent = collapsed ? "▴" : "▾";
+    if (!collapsed) {
+      setTimeout(() => { try { filterEl.focus(); } catch(e){} }, 50);
+    }
+    setTimeout(() => map.invalidateSize(), 80);
+  }
+
+  function toggleCollapsed() {
+    setSheetCollapsed(!sidebar.classList.contains("collapsed"));
+  }
+
+  btnCollapse.addEventListener("click", toggleCollapsed);
+  toggleSheet.addEventListener("click", toggleCollapsed);
+  grabber.addEventListener("click", toggleCollapsed);
+
+  btnLocate.addEventListener("click", () => {
+    map.setView([48.8566, 2.3522], 12);
+    if (isMobile()) setSheetCollapsed(true);
+  });
+
+  function syncLayout() {
+    if (isMobile()) setSheetCollapsed(true);
+    else setSheetCollapsed(false);
+    setTimeout(() => map.invalidateSize(), 120);
+  }
+  window.addEventListener("resize", syncLayout);
+
+  map.on("click", () => { if (isMobile()) setSheetCollapsed(true); });
+
   renderList();
+  syncLayout();
 </script>
 </body>
 </html>
